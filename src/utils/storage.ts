@@ -287,8 +287,26 @@ export function recordCompletedTestSession(
     sessionsCompleted: 0,
   };
 
+  let nextStreak = prevState.streakDays;
+  if (prevState.lastStudyDate !== today) {
+    if (prevState.lastStudyDate) {
+      const prevDate = new Date(prevState.lastStudyDate);
+      const currDate = new Date(today);
+      const diffDays = Math.round(
+        (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      nextStreak = diffDays === 1 ? prevState.streakDays + 1 : 1;
+    } else {
+      nextStreak = 1;
+    }
+  } else if (nextStreak === 0) {
+    nextStreak = 1;
+  }
+
   const nextState: DojoUserState = {
     ...prevState,
+    streakDays: nextStreak,
+    lastStudyDate: today,
     dailyLogs: {
       ...prevState.dailyLogs,
       [today]: {

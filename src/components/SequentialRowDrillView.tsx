@@ -14,8 +14,9 @@ import {
 } from 'lucide-react';
 import { ALL_KANA_ITEMS, KANA_ROWS, KanaItem } from '../data/kanaData';
 import { fisherYatesShuffle, checkEssayAnswer } from '../utils/shuffle';
-import { speakJapanese, playFeedbackTone } from '../utils/audio';
+import { speakJapanese, playFeedbackTone, triggerHaptic } from '../utils/audio';
 import { DojoUserState } from '../utils/storage';
+import { SmoothDropdown } from './SmoothDropdown';
 
 interface SequentialRowDrillViewProps {
   userState: DojoUserState;
@@ -283,31 +284,32 @@ export const SequentialRowDrillView: React.FC<SequentialRowDrillViewProps> = ({
 
           {/* Single-Row Compact Control Strip */}
           <div className="flex items-center justify-between sm:justify-end gap-2">
-            {/* Script Dropdown (Hiragana / Katakana / Campur) */}
-            <select
-              aria-label="Pilih Jenis Huruf Kana"
+            {/* Smooth Animated Script Dropdown (Hiragana / Katakana / Campur) */}
+            <SmoothDropdown
+              ariaLabel="Pilih Jenis Huruf Kana"
               value={selectedScript}
-              onChange={(e) => {
-                setSelectedScript(e.target.value as 'hiragana' | 'katakana' | 'both');
+              options={[
+                { value: 'hiragana', label: 'あ Hiragana' },
+                { value: 'katakana', label: 'ア Katakana' },
+                { value: 'both', label: 'あ/ア Campur' },
+              ]}
+              onChange={(val) => {
+                setSelectedScript(val);
                 setCurrentIndex(0);
                 setFeedback(null);
               }}
-              className="px-2.5 py-1.5 text-xs font-medium bg-[#F4EFE6] hover:bg-[#EAE3D5] text-[#2C2825] border border-[#D5CBB8] rounded-lg focus:outline-none focus:border-[#1E3A2F] cursor-pointer"
-            >
-              <option value="hiragana">あ Hiragana</option>
-              <option value="katakana">ア Katakana</option>
-              <option value="both">あ/ア Campur</option>
-            </select>
+            />
 
             {/* Input Mode Switch */}
             <div className="flex items-center p-0.5 bg-[#F4EFE6] border border-[#E2DCD0] rounded-lg shrink-0">
               <button
                 type="button"
                 onClick={() => {
+                  triggerHaptic('select');
                   setInputMode('multiple_choice');
                   setFeedback(null);
                 }}
-                className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer active:scale-[0.98] ${
                   inputMode === 'multiple_choice'
                     ? 'bg-[#1E3A2F] text-[#FBF9F5]'
                     : 'text-[#5C554E] hover:text-[#2C2825]'
@@ -319,10 +321,11 @@ export const SequentialRowDrillView: React.FC<SequentialRowDrillViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
+                  triggerHaptic('select');
                   setInputMode('essay');
                   setFeedback(null);
                 }}
-                className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer active:scale-[0.98] ${
                   inputMode === 'essay'
                     ? 'bg-[#1E3A2F] text-[#FBF9F5]'
                     : 'text-[#5C554E] hover:text-[#2C2825]'
@@ -336,8 +339,11 @@ export const SequentialRowDrillView: React.FC<SequentialRowDrillViewProps> = ({
             {/* Mobile Row Picker Trigger */}
             <button
               type="button"
-              onClick={() => setShowMobileRowSheet(true)}
-              className="lg:hidden flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-[#FFFFFF] border border-[#D5CBB8] rounded-lg text-[#2C2825] shrink-0 cursor-pointer"
+              onClick={() => {
+                triggerHaptic('tap');
+                setShowMobileRowSheet(true);
+              }}
+              className="lg:hidden flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-[#FFFFFF] border border-[#D5CBB8] rounded-lg text-[#2C2825] shrink-0 cursor-pointer active:scale-[0.98]"
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-[#1E3A2F]" />
               <span>Deret ({selectedRowIds.length})</span>

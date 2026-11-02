@@ -278,6 +278,7 @@ export const SimulatorCBTView: React.FC<SimulatorCBTViewProps> = ({
       categoryBreakdown: catBreakdown,
     });
 
+    triggerHaptic('milestone');
     setPhase('results');
   };
 
@@ -1114,18 +1115,92 @@ export const SimulatorCBTView: React.FC<SimulatorCBTViewProps> = ({
           <p className="text-xs text-[#2C2825] leading-relaxed">{buildSenseiEvaluation()}</p>
         </div>
 
-        {/* Review Table */}
+        {/* Review List (Mobile Cards + Desktop Table) */}
         <div className="space-y-2.5">
           <h2 className="text-sm font-semibold text-[#2C2825]">
-            Tabel Review Jawaban & Penjelasan Gramatika ({questions.length} Soal)
+            Review Jawaban & Penjelasan Gramatika ({questions.length} Soal)
           </h2>
 
-          <div className="overflow-x-auto border border-[#E2DCD0] rounded-xl">
+          {/* Mobile Compact Review Cards (md:hidden) — Zero Horizontal Clipping */}
+          <div className="md:hidden divide-y divide-[#E2DCD0] border border-[#E2DCD0] rounded-xl bg-[#FBF9F5] overflow-hidden">
+            {questions.map((q, idx) => {
+              const resp = responses[q.id];
+              const isRight = resp?.isCorrect ?? false;
+              const correctKey =
+                q.options.find((o) => o.id === q.correctOptionId)?.text ||
+                q.acceptedEssayAnswers[0];
+
+              return (
+                <div key={q.id} className="p-3.5 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono-num text-[11px] font-semibold text-[#5C554E]">
+                      Soal #{idx + 1} · {q.category.toUpperCase()}
+                    </span>
+                    {q.audioText && (
+                      <button
+                        type="button"
+                        onClick={() => speakJapanese(q.audioText!, 0.85)}
+                        className="p-1.5 rounded bg-[#F4EFE6] hover:bg-[#EAE3D5] text-[#2C2825] border border-[#D5CBB8] shrink-0 cursor-pointer"
+                      >
+                        <Volume2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="font-jp text-sm font-bold text-[#2C2825] leading-relaxed break-words">
+                    {q.stimulusJapanese}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[#5C554E]">Anda:</span>
+                      {resp ? (
+                        <span
+                          className={`inline-flex items-center gap-1 font-mono-num font-semibold ${
+                            isRight ? 'text-[#1E3A2F]' : 'text-[#8C2D19]'
+                          }`}
+                        >
+                          {isRight ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
+                          <span>{resp.userAnswerText}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[#8C2D19] inline-flex items-center gap-1 font-semibold">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>Kosong</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {!isRight && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[#5C554E]">Kunci:</span>
+                        <span className="font-jp font-semibold text-[#1E3A2F]">
+                          {correctKey}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="text-[11px] text-[#5C554E] leading-relaxed">
+                    {q.explanation}
+                    {q.grammarStructure && (
+                      <div className="text-[#2C2825] font-medium mt-1">
+                        {q.grammarStructure}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Review Table (hidden md:block) */}
+          <div className="hidden md:block overflow-x-auto border border-[#E2DCD0] rounded-xl">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-[#F4EFE6] text-[#5C554E] border-b border-[#E2DCD0]">
                   <th className="py-2.5 px-3 font-semibold">No</th>
-                  <th className="py-2.5 px-3 font-semibold">Soal</th>
+                  <th className="py-2.5 px-3 font-semibold w-1/4">Soal</th>
                   <th className="py-2.5 px-3 font-semibold">Jawaban</th>
                   <th className="py-2.5 px-3 font-semibold">Kunci</th>
                   <th className="py-2.5 px-3 font-semibold">Penjelasan</th>
@@ -1143,7 +1218,7 @@ export const SimulatorCBTView: React.FC<SimulatorCBTViewProps> = ({
                   return (
                     <tr key={q.id} className="hover:bg-[#FBF9F5]">
                       <td className="py-2.5 px-3 font-mono-num text-[#857D74]">{idx + 1}</td>
-                      <td className="py-2.5 px-3 font-jp text-sm font-bold text-[#2C2825]">
+                      <td className="py-2.5 px-3 font-jp text-sm font-bold text-[#2C2825] max-w-xs leading-relaxed">
                         {q.stimulusJapanese}
                       </td>
                       <td className="py-2.5 px-3 font-mono-num">

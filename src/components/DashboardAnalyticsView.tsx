@@ -6,12 +6,13 @@ import {
   Trash2,
   Check,
   AlertCircle,
+  Flame,
 } from 'lucide-react';
 import {
   DojoUserState,
   getSenseiLevelMeta,
 } from '../utils/storage';
-import { speakJapanese } from '../utils/audio';
+import { speakJapanese, triggerHaptic } from '../utils/audio';
 import { QuestionCategory } from '../data/questionBank';
 
 interface DashboardAnalyticsViewProps {
@@ -43,11 +44,46 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
     ).padStart(2, '0')}`;
     const log = userState.dailyLogs[iso];
     const qCount = log?.questionsAnswered || 0;
+    const sessionsCompleted = log?.sessionsCompleted || 0;
     const acc = qCount > 0 ? Math.round((log.correctCount / qCount) * 100) : 0;
     const avgSec = qCount > 0 ? Number((log.totalTimeMs / qCount / 1000).toFixed(1)) : 0;
     const label = d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric' });
-    return { iso, label, qCount, acc, avgSec };
+    const shortDay = d.toLocaleDateString('id-ID', { weekday: 'short' });
+    return { iso, label, shortDay, qCount, sessionsCompleted, acc, avgSec };
   });
+
+  // Compute consecutive test/study streak message
+  const streakCount = userState.streakDays;
+  const getStreakMotivation = (days: number): { title: string; message: string; isHigh: boolean } => {
+    if (days >= 7) {
+      return {
+        title: 'Kecepatan & Disiplin Luar Biasa! (High Streak)',
+        message: `Anda telah berlatih dan menyelesaikan sesi tanpa putus selama ${days} hari berturut-turut! Konsistensi ini adalah kunci utama lulus JLPT N5 / JFT-Basic tepat waktu.`,
+        isHigh: true,
+      };
+    }
+    if (days >= 3) {
+      return {
+        title: 'Momentum Belajar Sedang Menyala!',
+        message: `${days} hari beruntun aktif! Pertahankan hingga 7 hari penuh agar memori Hiragana, Katakana, dan kosakata MNN terkunci permanen di Long-Term Memory.`,
+        isHigh: true,
+      };
+    }
+    if (days >= 1) {
+      return {
+        title: 'Langkah Awal yang Baik Hari Ini',
+        message: `Streak ${days} hari aktif. Selesaikan minimal 1 sesi tes besok untuk menjaga api konsistensi Anda tetap menyala.`,
+        isHigh: false,
+      };
+    }
+    return {
+      title: 'Mulai Daily Streak Anda Hari Ini',
+      message: 'Belum ada sesi latihan/tes yang diselesaikan hari ini. Kerjakan 1 sesi tes untuk menyalakan kembali api Daily Streak Anda!',
+      isHigh: false,
+    };
+  };
+
+  const streakInfo = getStreakMotivation(streakCount);
 
   // Compute Category Mastery from userState.itemStats
   const categoryMastery = (
@@ -99,8 +135,11 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
           {mistakes.length > 0 && (
             <button
               type="button"
-              onClick={() => onStartMistakeDrill(mistakes.map((m) => m.questionId))}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#8C2D19] hover:bg-[#722312] text-[#FBF9F5] text-xs font-semibold transition-colors cursor-pointer"
+              onClick={() => {
+                triggerHaptic('select');
+                onStartMistakeDrill(mistakes.map((m) => m.questionId));
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#8C2D19] hover:bg-[#722312] text-[#FBF9F5] text-xs font-semibold transition-colors cursor-pointer active:scale-[0.98]"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Uji Ulang ({mistakes.length})</span>
@@ -108,8 +147,11 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
           )}
           <button
             type="button"
-            onClick={() => onNavigateTab('simulator')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1E3A2F] hover:bg-[#152A22] text-[#FBF9F5] text-xs font-semibold transition-colors cursor-pointer"
+            onClick={() => {
+              triggerHaptic('select');
+              onNavigateTab('simulator');
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1E3A2F] hover:bg-[#152A22] text-[#FBF9F5] text-xs font-semibold transition-colors cursor-pointer active:scale-[0.98]"
           >
             <Play className="w-3.5 h-3.5" />
             <span>Simulasi CBT</span>
@@ -117,10 +159,74 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
         </div>
       </div>
 
+      {/* Daily Streak Counter Card with Fire Icon & Motivational Message */}
+      <div
+        className={`rounded-xl border p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
+          streakInfo.isHigh
+            ? 'bg-[#FDF6EC] border-[#DFC298]'
+            : 'bg-[#FFFFFF] border-[#E2DCD0]'
+        }`}
+      >
+        <div className="flex items-start sm:items-center gap-3.5">
+          <div
+            className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${
+              streakCount > 0
+                ? 'bg-[#FCE8D5] border-[#E5B88B] text-[#C85A17]'
+                : 'bg-[#F4EFE6] border-[#E2DCD0] text-[#857D74]'
+            }`}
+          >
+            <Flame className="w-6 h-6 fill-current" />
+          </div>
+
+          <div className="space-y-0.5">
+            <div className="flex items-baseline gap-2">
+              <span className="font-mono-num text-xl sm:text-2xl font-bold text-[#2C2825]">
+                {streakCount} Hari Beruntun
+              </span>
+              <span className="text-xs font-semibold text-[#C85A17]">
+                {streakInfo.title}
+              </span>
+            </div>
+            <p className="text-xs text-[#5C554E] leading-relaxed max-w-2xl">
+              {streakInfo.message}
+            </p>
+          </div>
+        </div>
+
+        {/* 7-Day Visual Streak Chain */}
+        <div className="flex items-center justify-between sm:justify-end gap-1.5 pt-2 lg:pt-0 border-t lg:border-t-0 border-[#E2DCD0] shrink-0">
+          {last7Days.map((d) => {
+            const isActiveDay = d.qCount > 0 || d.sessionsCompleted > 0;
+            return (
+              <div
+                key={d.iso}
+                className="flex flex-col items-center gap-1"
+                title={`${d.label}: ${d.qCount} soal (${d.sessionsCompleted} sesi selesai)`}
+              >
+                <div
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center border text-xs transition-colors ${
+                    isActiveDay
+                      ? 'bg-[#C85A17] border-[#C85A17] text-[#FBF9F5]'
+                      : 'bg-[#F4EFE6] border-[#E2DCD0] text-[#857D74]'
+                  }`}
+                >
+                  {isActiveDay ? (
+                    <Flame className="w-3.5 h-3.5 fill-current" />
+                  ) : (
+                    <span className="font-mono-num text-[10px]">·</span>
+                  )}
+                </div>
+                <span className="text-[10px] text-[#5C554E]">{d.shortDay}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Section 1: Real-time Sensei Level Progression & Adaptive Romaji Switcher */}
-      <div className="bg-[#FFFFFF] border border-[#E2DCD0] rounded-xl p-5 sm:p-6 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1">
+      <div className="bg-[#FFFFFF] border border-[#E2DCD0] rounded-xl p-4 sm:p-5 space-y-3.5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="space-y-0.5">
             <div className="flex items-center gap-2 text-xs text-[#5C554E]">
               <span className="font-mono-num font-semibold text-[#1E3A2F]">
                 {levelMeta.badge} AKTIF
@@ -128,7 +234,7 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
               <span aria-hidden="true">·</span>
               <span>{levelMeta.romajiPolicy}</span>
             </div>
-            <h2 className="text-lg font-bold text-[#2C2825]">{levelMeta.title}</h2>
+            <h2 className="text-base sm:text-lg font-bold text-[#2C2825]">{levelMeta.title}</h2>
             <p className="text-xs text-[#5C554E]">{levelMeta.subtitle}</p>
           </div>
 
@@ -140,8 +246,11 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
             <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => onSelectLevelOverride(null)}
-                className={`px-2.5 py-1.5 rounded text-xs font-medium border cursor-pointer ${
+                onClick={() => {
+                  triggerHaptic('select');
+                  onSelectLevelOverride(null);
+                }}
+                className={`px-2.5 py-1.5 rounded text-xs font-medium border cursor-pointer active:scale-[0.98] ${
                   userState.manualLevelOverride === null
                     ? 'bg-[#1E3A2F] text-[#FBF9F5] border-[#1E3A2F]'
                     : 'bg-[#FBF9F5] text-[#5C554E] border-[#D5CBB8]'
@@ -153,8 +262,11 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
                 <button
                   key={lv}
                   type="button"
-                  onClick={() => onSelectLevelOverride(lv)}
-                  className={`px-2.5 py-1.5 rounded font-mono-num text-xs font-medium border cursor-pointer ${
+                  onClick={() => {
+                    triggerHaptic('select');
+                    onSelectLevelOverride(lv);
+                  }}
+                  className={`px-2.5 py-1.5 rounded font-mono-num text-xs font-medium border cursor-pointer active:scale-[0.98] ${
                     userState.currentSenseiLevel === lv && userState.manualLevelOverride === lv
                       ? 'bg-[#1E3A2F] text-[#FBF9F5] border-[#1E3A2F]'
                       : 'bg-[#FBF9F5] text-[#2C2825] border-[#D5CBB8] hover:bg-[#F4EFE6]'
@@ -319,7 +431,7 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
         </div>
 
         {mistakes.length === 0 ? (
-          <div className="p-6 rounded-lg bg-[#FBF9F5] border border-[#E2DCD0] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="p-5 rounded-lg bg-[#FBF9F5] border border-[#E2DCD0] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <Check className="w-5 h-5 text-[#1E3A2F] shrink-0 mt-0.5" />
               <div>
@@ -327,7 +439,7 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
                   Bank Kesalahan Bersih (0 Kelemahan Aktif)
                 </div>
                 <p className="text-xs text-[#5C554E] mt-0.5">
-                  Belum ada soal yang tertukar, atau seluruh soal yang pernah salah telah berhasil Anda perbaiki. Mulai sesi latihan atau simulasi ujian untuk menguji ketajaman hafalan Anda.
+                  Belum ada soal yang tertukar, atau seluruh soal yang pernah salah telah berhasil Anda perbaiki.
                 </p>
               </div>
             </div>
@@ -340,117 +452,194 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto border border-[#E2DCD0] rounded-lg">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-[#F4EFE6] text-[#5C554E] border-b border-[#E2DCD0]">
-                  <th className="py-2.5 px-3.5 font-semibold">Huruf / Kalimat</th>
-                  <th className="py-2.5 px-3.5 font-semibold">Jawaban Tepat</th>
-                  <th className="py-2.5 px-3.5 font-semibold">Kategori</th>
-                  <th className="py-2.5 px-3.5 font-semibold">Frekuensi Salah</th>
-                  <th className="py-2.5 px-3.5 font-semibold">Catatan Perbaikan</th>
-                  <th className="py-2.5 px-3.5 font-semibold text-right">Suara</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E2DCD0]">
-                {mistakes.map((m) => (
-                  <tr key={m.questionId} className="hover:bg-[#FBF9F5]">
-                    <td className="py-3 px-3.5 font-jp text-base font-bold text-[#2C2825]">
-                      {m.stimulus}
-                    </td>
-                    <td className="py-3 px-3.5 font-jp font-semibold text-[#1E3A2F]">
-                      {m.correctAnswer}
-                    </td>
-                    <td className="py-3 px-3.5 uppercase font-mono-num text-[#5C554E]">
-                      {m.category}
-                    </td>
-                    <td className="py-3 px-3.5 font-mono-num text-[#8C2D19] font-semibold">
-                      <span className="inline-flex items-center gap-1">
-                        <AlertCircle className="w-3.5 h-3.5" />
+          <>
+            {/* Mobile Compact Card List (md:hidden) — Zero Horizontal Clipping */}
+            <div className="md:hidden divide-y divide-[#E2DCD0] border border-[#E2DCD0] rounded-lg bg-[#FBF9F5] overflow-hidden">
+              {mistakes.map((m) => (
+                <div key={m.questionId} className="p-3.5 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-[11px] font-mono-num">
+                      <span className="uppercase font-semibold text-[#5C554E]">
+                        {m.category}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <span className="inline-flex items-center gap-1 text-[#8C2D19] font-semibold">
+                        <AlertCircle className="w-3 h-3" />
                         <span>{m.missCount}x salah</span>
                       </span>
-                    </td>
-                    <td className="py-3 px-3.5 text-[#5C554E] max-w-md">{m.explanation}</td>
-                    <td className="py-3 px-3.5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => speakJapanese(m.stimulus, 0.85)}
-                        className="p-1.5 rounded bg-[#F4EFE6] hover:bg-[#EAE3D5] text-[#2C2825] border border-[#D5CBB8] cursor-pointer"
-                      >
-                        <Volume2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => speakJapanese(m.stimulus, 0.85)}
+                      className="p-1.5 rounded bg-[#F4EFE6] hover:bg-[#EAE3D5] text-[#2C2825] border border-[#D5CBB8] shrink-0 cursor-pointer"
+                      title="Dengarkan"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="font-jp text-sm font-bold text-[#2C2825] leading-relaxed break-words">
+                    {m.stimulus}
+                  </div>
+
+                  <div className="flex flex-wrap items-baseline gap-1.5 text-xs">
+                    <span className="text-[#5C554E]">Kunci Tepat:</span>
+                    <span className="font-jp font-semibold text-[#1E3A2F]">
+                      {m.correctAnswer}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-[#5C554E] leading-relaxed">
+                    {m.explanation}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table (hidden md:block) */}
+            <div className="hidden md:block overflow-x-auto border border-[#E2DCD0] rounded-lg">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-[#F4EFE6] text-[#5C554E] border-b border-[#E2DCD0]">
+                    <th className="py-2.5 px-3.5 font-semibold w-1/4">Huruf / Kalimat</th>
+                    <th className="py-2.5 px-3.5 font-semibold">Jawaban Tepat</th>
+                    <th className="py-2.5 px-3.5 font-semibold">Kategori</th>
+                    <th className="py-2.5 px-3.5 font-semibold">Frekuensi</th>
+                    <th className="py-2.5 px-3.5 font-semibold">Catatan Perbaikan</th>
+                    <th className="py-2.5 px-3.5 font-semibold text-right">Suara</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-[#E2DCD0]">
+                  {mistakes.map((m) => (
+                    <tr key={m.questionId} className="hover:bg-[#FBF9F5]">
+                      <td className="py-3 px-3.5 font-jp text-sm font-bold text-[#2C2825] max-w-xs leading-relaxed">
+                        {m.stimulus}
+                      </td>
+                      <td className="py-3 px-3.5 font-jp font-semibold text-[#1E3A2F]">
+                        {m.correctAnswer}
+                      </td>
+                      <td className="py-3 px-3.5 uppercase font-mono-num text-[#5C554E]">
+                        {m.category}
+                      </td>
+                      <td className="py-3 px-3.5 font-mono-num text-[#8C2D19] font-semibold whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <span>{m.missCount}x salah</span>
+                        </span>
+                      </td>
+                      <td className="py-3 px-3.5 text-[#5C554E] max-w-md leading-relaxed">
+                        {m.explanation}
+                      </td>
+                      <td className="py-3 px-3.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => speakJapanese(m.stimulus, 0.85)}
+                          className="p-1.5 rounded bg-[#F4EFE6] hover:bg-[#EAE3D5] text-[#2C2825] border border-[#D5CBB8] cursor-pointer"
+                        >
+                          <Volume2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* Section 4: Recent Test History & Data Reset */}
-      <div className="bg-[#FFFFFF] border border-[#E2DCD0] rounded-xl p-5 sm:p-6 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[#E2DCD0]">
+      <div className="bg-[#FFFFFF] border border-[#E2DCD0] rounded-xl p-4 sm:p-6 space-y-3.5">
+        <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#E2DCD0]">
           <div>
-            <h2 className="text-base font-semibold text-[#2C2825]">
+            <h2 className="text-sm sm:text-base font-semibold text-[#2C2825]">
               Riwayat Sesi Ujian Simulator CBT
             </h2>
-            <p className="text-xs text-[#5C554E] mt-0.5">
-              Rekaman skor ujian terakhir yang disimpan di memori lokal perangkat Anda.
+            <p className="text-[11px] sm:text-xs text-[#5C554E] mt-0.5">
+              Rekaman skor ujian terakhir di memori lokal perangkat Anda.
             </p>
           </div>
           <button
             type="button"
             onClick={onResetAllData}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#E2DCD0] text-xs text-[#8C2D19] hover:bg-[#FBECE9] transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded border border-[#E2DCD0] text-[11px] sm:text-xs text-[#8C2D19] hover:bg-[#FBECE9] transition-colors shrink-0 cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            <span>Reset Progres Lokal</span>
+            <span>Reset Data</span>
           </button>
         </div>
 
         {userState.testHistory.length === 0 ? (
-          <div className="text-xs text-[#5C554E] py-4">
-            Belum ada riwayat simulasi ujian penuh yang diselesaikan. Buka tab <strong>Simulator CBT JLPT/JFT</strong> untuk mengambil tes 15, 50, atau 100 soal.
+          <div className="text-xs text-[#5C554E] py-3">
+            Belum ada riwayat simulasi ujian penuh yang diselesaikan. Buka tab <strong>Ujian CBT</strong> untuk mengambil tes 15, 50, atau 100 soal.
           </div>
         ) : (
-          <div className="overflow-x-auto border border-[#E2DCD0] rounded-lg">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-[#F4EFE6] text-[#5C554E] border-b border-[#E2DCD0]">
-                  <th className="py-2.5 px-3.5 font-semibold">Waktu Selesai</th>
-                  <th className="py-2.5 px-3.5 font-semibold">Level & Materi</th>
-                  <th className="py-2.5 px-3.5 font-semibold">Mode</th>
-                  <th className="py-2.5 px-3.5 font-semibold">Skor Akhir</th>
-                  <th className="py-2.5 px-3.5 font-semibold">Grade</th>
-                  <th className="py-2.5 px-3.5 font-semibold">Kecepatan Rata-rata</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E2DCD0] font-mono-num">
-                {userState.testHistory.map((rec) => (
-                  <tr key={rec.id} className="hover:bg-[#FBF9F5]">
-                    <td className="py-2.5 px-3.5 text-[#5C554E]">
+          <>
+            {/* Mobile Compact History List (md:hidden) */}
+            <div className="md:hidden divide-y divide-[#E2DCD0] border border-[#E2DCD0] rounded-lg bg-[#FBF9F5] overflow-hidden">
+              {userState.testHistory.map((rec) => (
+                <div key={rec.id} className="p-3 space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-[#2C2825]">{rec.levelLabel}</span>
+                    <span className="font-mono-num font-bold text-[#1E3A2F]">
+                      {rec.scorePercent}% · Grade {rec.grade}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-[#5C554E] font-mono-num">
+                    <span>
+                      {rec.modeLabel} ({rec.correctCount}/{rec.totalQuestions})
+                    </span>
+                    <span>
+                      {rec.avgTimeSec}d/soal ·{' '}
                       {new Date(rec.timestamp).toLocaleDateString('id-ID', {
                         day: 'numeric',
                         month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
                       })}
-                    </td>
-                    <td className="py-2.5 px-3.5 font-sans font-medium text-[#2C2825]">
-                      {rec.levelLabel}
-                    </td>
-                    <td className="py-2.5 px-3.5 font-sans text-[#5C554E]">{rec.modeLabel}</td>
-                    <td className="py-2.5 px-3.5 font-bold text-[#2C2825]">
-                      {rec.scorePercent}% ({rec.correctCount}/{rec.totalQuestions})
-                    </td>
-                    <td className="py-2.5 px-3.5 font-bold text-[#1E3A2F]">Grade {rec.grade}</td>
-                    <td className="py-2.5 px-3.5 text-[#5C554E]">{rec.avgTimeSec}d / soal</td>
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop History Table (hidden md:block) */}
+            <div className="hidden md:block overflow-x-auto border border-[#E2DCD0] rounded-lg">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-[#F4EFE6] text-[#5C554E] border-b border-[#E2DCD0]">
+                    <th className="py-2.5 px-3.5 font-semibold">Waktu Selesai</th>
+                    <th className="py-2.5 px-3.5 font-semibold">Level & Materi</th>
+                    <th className="py-2.5 px-3.5 font-semibold">Mode</th>
+                    <th className="py-2.5 px-3.5 font-semibold">Skor Akhir</th>
+                    <th className="py-2.5 px-3.5 font-semibold">Grade</th>
+                    <th className="py-2.5 px-3.5 font-semibold">Kecepatan Rata-rata</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-[#E2DCD0] font-mono-num">
+                  {userState.testHistory.map((rec) => (
+                    <tr key={rec.id} className="hover:bg-[#FBF9F5]">
+                      <td className="py-2.5 px-3.5 text-[#5C554E]">
+                        {new Date(rec.timestamp).toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                      <td className="py-2.5 px-3.5 font-sans font-medium text-[#2C2825]">
+                        {rec.levelLabel}
+                      </td>
+                      <td className="py-2.5 px-3.5 font-sans text-[#5C554E]">{rec.modeLabel}</td>
+                      <td className="py-2.5 px-3.5 font-bold text-[#2C2825]">
+                        {rec.scorePercent}% ({rec.correctCount}/{rec.totalQuestions})
+                      </td>
+                      <td className="py-2.5 px-3.5 font-bold text-[#1E3A2F]">Grade {rec.grade}</td>
+                      <td className="py-2.5 px-3.5 text-[#5C554E]">{rec.avgTimeSec}d / soal</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
