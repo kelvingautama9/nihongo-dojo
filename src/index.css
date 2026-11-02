@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-canvas: #FBF9F5;
+    --bg-surface: #F4EFE6;
+    --bg-elevated: #FFFFFF;
+    --border-hairline: #E2DCD0;
+    --border-strong: #C9C0B1;
+    --text-primary: #2C2825;
+    --text-secondary: #5C554E;
+    --text-muted: #857D74;
+    --accent-primary: #1E3A2F;
+    --accent-hover: #152A22;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    overflow-x: hidden;
+  }
+}
+
+.font-jp {
+  font-family: 'Noto Sans JP', sans-serif;
+  font-feature-settings: "palt" 0;
+}
+
+.font-mono-num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

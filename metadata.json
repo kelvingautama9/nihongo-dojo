@@ -1,0 +1,6 @@
+{
+  "name": "Nihongo Dojo — Simulator Kana & JLPT/JFT N5",
+  "description": "Platform pembelajaran dan simulator ujian Hiragana, Katakana, modifikasi huruf (Sokuon, Chouon, Youon), serta kosakata dan tata bahasa JLPT/JFT N5 dengan pelacakan level real-time dan dukungan offline.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
