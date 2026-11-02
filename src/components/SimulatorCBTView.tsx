@@ -21,7 +21,7 @@ import {
   QuestionCategory,
 } from '../data/questionBank';
 import { checkEssayAnswer } from '../utils/shuffle';
-import { speakJapanese, playFeedbackTone } from '../utils/audio';
+import { speakJapanese, playFeedbackTone, triggerHaptic } from '../utils/audio';
 import {
   DojoUserState,
   calculateGrade,
@@ -280,6 +280,9 @@ export const SimulatorCBTView: React.FC<SimulatorCBTViewProps> = ({
 
     triggerHaptic('milestone');
     setPhase('results');
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const answeredCount = Object.keys(responses).length;
