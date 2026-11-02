@@ -22,6 +22,8 @@ import {
   recordCompletedTestSession,
   computeSenseiLevel,
   getSenseiLevelMeta,
+  getTotalCorrectAnswers,
+  getAchievementRank,
   DojoUserState,
   TestHistoryRecord,
 } from './utils/storage';
@@ -31,6 +33,7 @@ import { SenseiStudyView } from './components/SenseiStudyView';
 import { SimulatorCBTView } from './components/SimulatorCBTView';
 import { DashboardAnalyticsView } from './components/DashboardAnalyticsView';
 import { PWAInstallButton, OfflineStatusBanner } from './components/PWAElements';
+import { RankEmblem } from './components/RankEmblem';
 
 type ActiveTabId = 'drill' | 'study' | 'simulator' | 'dashboard';
 
@@ -51,6 +54,8 @@ export default function App() {
 
   const levelMeta = getSenseiLevelMeta(userState.currentSenseiLevel);
   const mistakeCount = Object.keys(userState.mistakeBank).length;
+  const totalCorrectAnswers = getTotalCorrectAnswers(userState);
+  const rankInfo = getAchievementRank(totalCorrectAnswers);
 
   const handleRecordAnswer = (params: {
     questionId: string;
@@ -255,13 +260,19 @@ export default function App() {
               <div className="p-3.5 border-t border-[#E2DCD0] space-y-2.5">
                 <div className="p-2.5 rounded-lg bg-[#FBF9F5] border border-[#E2DCD0] space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
+                    <span
+                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${rankInfo.current.badgeBg} ${rankInfo.current.badgeBorder} ${rankInfo.current.badgeText}`}
+                    >
+                      <RankEmblem rankId={rankInfo.current.id} size="xs" />
+                      <span>{rankInfo.current.name}</span>
+                    </span>
+                    <span className="font-mono-num text-[11px] text-[#5C554E]">
+                      {totalCorrectAnswers} Benar
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
                     <span className="font-semibold text-[#1E3A2F]">{levelMeta.badge}</span>
                     <span className="font-mono-num text-[#5C554E]">{userState.totalXp} XP</span>
-                  </div>
-                  <div className="text-[11px] font-medium text-[#2C2825] leading-snug">
-                    {userState.currentSenseiLevel >= 4
-                      ? 'Mode Mahir: Romaji Sembunyi'
-                      : 'Mode Pemula: Romaji Aktif'}
                   </div>
                   <div className="flex items-center gap-1 pt-0.5">
                     {[1, 2, 3, 4, 5].map((lv) => (
@@ -349,9 +360,16 @@ export default function App() {
 
               <div className="space-y-2.5 pt-3 border-t border-[#E2DCD0]">
                 <div className="p-2.5 rounded-lg bg-[#F4EFE6] border border-[#E2DCD0] space-y-1.5">
-                  <div className="flex justify-between text-xs font-semibold">
-                    <span>Status: {levelMeta.badge}</span>
-                    <span className="font-mono-num">{userState.totalXp} XP</span>
+                  <div className="flex items-center justify-between text-xs">
+                    <span
+                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${rankInfo.current.badgeBg} ${rankInfo.current.badgeBorder} ${rankInfo.current.badgeText}`}
+                    >
+                      <RankEmblem rankId={rankInfo.current.id} size="xs" />
+                      <span>{rankInfo.current.name}</span>
+                    </span>
+                    <span className="font-mono-num text-[11px] text-[#5C554E]">
+                      {totalCorrectAnswers} Benar · {userState.totalXp} XP
+                    </span>
                   </div>
                   <div className="flex gap-1 pt-0.5">
                     {[1, 2, 3, 4, 5].map((lv) => (

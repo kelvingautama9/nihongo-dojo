@@ -354,3 +354,170 @@ export function calculateGrade(scorePercent: number): {
     recommendation: 'Fondasi Kana atau modifikasi bunyi belum stabil. Fokuskan latihan pada Deret Standar dan Modul Sokuon/Chouon sebelum lanjut.',
   };
 }
+
+export type AchievementRankId =
+  | 'warrior'
+  | 'elite'
+  | 'master'
+  | 'grandmaster'
+  | 'epic'
+  | 'legend'
+  | 'mythic';
+
+export interface AchievementRankTier {
+  id: AchievementRankId;
+  name: string;
+  jpTitle: string;
+  minCorrect: number;
+  nextMinCorrect: number | null;
+  badgeBg: string;
+  badgeText: string;
+  badgeBorder: string;
+  accentColor: string;
+  description: string;
+}
+
+export const ACHIEVEMENT_RANKS: AchievementRankTier[] = [
+  {
+    id: 'warrior',
+    name: 'Warrior',
+    jpTitle: '戦士 · Senshi',
+    minCorrect: 0,
+    nextMinCorrect: 25,
+    badgeBg: 'bg-[#F4EFE6]',
+    badgeText: 'text-[#5C554E]',
+    badgeBorder: 'border-[#D5CBB8]',
+    accentColor: '#786B5E',
+    description: 'Langkah awal menguasai deret Hiragana & Katakana dasar.',
+  },
+  {
+    id: 'elite',
+    name: 'Elite',
+    jpTitle: '精鋭 · Seiei',
+    minCorrect: 25,
+    nextMinCorrect: 75,
+    badgeBg: 'bg-[#EBF2EE]',
+    badgeText: 'text-[#285242]',
+    badgeBorder: 'border-[#B8D1C5]',
+    accentColor: '#285242',
+    description: 'Mulai konsisten mengenali suku kata dasar tanpa ragu.',
+  },
+  {
+    id: 'master',
+    name: 'Master',
+    jpTitle: '達人 · Tatsujin',
+    minCorrect: 75,
+    nextMinCorrect: 150,
+    badgeBg: 'bg-[#FDF6EC]',
+    badgeText: 'text-[#9A5B13]',
+    badgeBorder: 'border-[#E6C99E]',
+    accentColor: '#B86F1B',
+    description: 'Penguasaan kuat pada deret Gojuuon dan bunyi modifikasi.',
+  },
+  {
+    id: 'grandmaster',
+    name: 'Grandmaster',
+    jpTitle: '師範 · Shihan',
+    minCorrect: 150,
+    nextMinCorrect: 275,
+    badgeBg: 'bg-[#FBF0E4]',
+    badgeText: 'text-[#A64415]',
+    badgeBorder: 'border-[#E5B88B]',
+    accentColor: '#C85A17',
+    description: 'Refleks baca cepat dan tajam pada kosakata N5.',
+  },
+  {
+    id: 'epic',
+    name: 'Epic',
+    jpTitle: '英傑 · Eiketsu',
+    minCorrect: 275,
+    nextMinCorrect: 450,
+    badgeBg: 'bg-[#E6EFEA]',
+    badgeText: 'text-[#1E3A2F]',
+    badgeBorder: 'border-[#94B5A5]',
+    accentColor: '#1E3A2F',
+    description: 'Tahan uji terhadap jebakan visual huruf mirip & Sokuon/Chouon.',
+  },
+  {
+    id: 'legend',
+    name: 'Legend',
+    jpTitle: '伝説 · Densetsu',
+    minCorrect: 450,
+    nextMinCorrect: 700,
+    badgeBg: 'bg-[#FAECE8]',
+    badgeText: 'text-[#8C2D19]',
+    badgeBorder: 'border-[#DFADA2]',
+    accentColor: '#8C2D19',
+    description: 'Penguasaan kalimat Minna no Nihongo Bab 1–5 tanpa Romaji.',
+  },
+  {
+    id: 'mythic',
+    name: 'Mythic',
+    jpTitle: '神話 · Shinwa',
+    minCorrect: 700,
+    nextMinCorrect: null,
+    badgeBg: 'bg-[#2C2825]',
+    badgeText: 'text-[#F5D796]',
+    badgeBorder: 'border-[#C89D46]',
+    accentColor: '#B8862D',
+    description: 'Puncak penguasaan Dojo — Siap tempur ujian resmi JLPT N5 & JFT-Basic.',
+  },
+];
+
+export function getTotalCorrectAnswers(state: DojoUserState): number {
+  const fromItems = Object.values(state.itemStats).reduce(
+    (sum, item) => sum + (item.correct || 0),
+    0
+  );
+  const fromDaily = Object.values(state.dailyLogs).reduce(
+    (sum, day) => sum + (day.correctCount || 0),
+    0
+  );
+  return Math.max(fromItems, fromDaily);
+}
+
+export function getAchievementRank(totalCorrect: number): {
+  current: AchievementRankTier;
+  next: AchievementRankTier | null;
+  progressPercent: number;
+  remainingToNext: number;
+} {
+  let currentIndex = 0;
+  for (let i = ACHIEVEMENT_RANKS.length - 1; i >= 0; i--) {
+    if (totalCorrect >= ACHIEVEMENT_RANKS[i].minCorrect) {
+      currentIndex = i;
+      break;
+    }
+  }
+
+  const current = ACHIEVEMENT_RANKS[currentIndex];
+  const next =
+    currentIndex < ACHIEVEMENT_RANKS.length - 1
+      ? ACHIEVEMENT_RANKS[currentIndex + 1]
+      : null;
+
+  if (!next) {
+    return {
+      current,
+      next: null,
+      progressPercent: 100,
+      remainingToNext: 0,
+    };
+  }
+
+  const tierSpan = next.minCorrect - current.minCorrect;
+  const earnedInTier = Math.max(0, totalCorrect - current.minCorrect);
+  const progressPercent = Math.min(
+    100,
+    Math.round((earnedInTier / Math.max(1, tierSpan)) * 100)
+  );
+  const remainingToNext = Math.max(0, next.minCorrect - totalCorrect);
+
+  return {
+    current,
+    next,
+    progressPercent,
+    remainingToNext,
+  };
+}
+
